@@ -3,6 +3,10 @@ import { useState } from 'react';
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [linkedinUrl, setLinkedinUrl] = useState('https://www.linkedin.com/in/evilvirus7/');
+  const [scrapeResult, setScrapeResult] = useState(null);
+  const backendBase = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
   const NavLinks = () => (
     <ul className="flex flex-col md:flex-row md:items-center gap-6 text-sm font-medium">
@@ -16,6 +20,24 @@ export default function Navbar() {
       </li>
     </ul>
   );
+
+  async function handleLinkedInFetch(e) {
+    e?.preventDefault();
+    setFetching(true);
+    setScrapeResult(null);
+    try {
+      const url = new URL('/linkedin/scrape', backendBase);
+      url.searchParams.set('url', linkedinUrl);
+      const res = await fetch(url.toString());
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || 'Failed to fetch');
+      setScrapeResult(data);
+    } catch (err) {
+      setScrapeResult({ error: String(err) });
+    } finally {
+      setFetching(false);
+    }
+  }
 
   return (
     <>
@@ -33,7 +55,7 @@ export default function Navbar() {
 
             <button
               aria-label="Toggle menu"
-              className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-slate-200 hover:bg-white/10"
+              className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-slate-2 00 hover:bg-white/10"
               onClick={() => setMobileOpen((v) => !v)}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
@@ -55,36 +77,67 @@ export default function Navbar() {
       </nav>
 
       {showLogin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-sm rounded-xl border border-white/10 bg-neutral-900 p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-white/10 bg-neutral-900 p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-lg font-semibold">Admin Login</h3>
+              <h3 className="text-white text-lg font-semibold">Admin</h3>
               <button
-                aria-label="Close login"
+                aria-label="Close"
                 className="text-slate-300 hover:text-white"
                 onClick={() => setShowLogin(false)}
               >
                 ✕
               </button>
             </div>
-            <form
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                alert('Login action will be connected to the backend.');
-                setShowLogin(false);
-              }}
-            >
-              <div>
-                <label className="block text-sm text-slate-300 mb-1" htmlFor="email">Email</label>
-                <input id="email" type="email" required placeholder="admin@example.com" className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  alert('Login action will be connected to the backend.');
+                }}
+              >
+                <div>
+                  <label className="block text-sm text-slate-300 mb-1" htmlFor="email">Email</label>
+                  <input id="email" type="email" required placeholder="admin@example.com" className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-300 mb-1" htmlFor="password">Password</label>
+                  <input id="password" type="password" required placeholder="••••••••" className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                </div>
+                <button type="submit" className="w-full px-4 py-2 rounded-md bg-cyan-500 text-neutral-900 font-semibold hover:bg-cyan-400 transition-colors">Sign in</button>
+              </form>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-white font-medium">Import from LinkedIn</h4>
+                  <span className="text-xs text-slate-400">Public profiles only</span>
+                </div>
+                <form onSubmit={handleLinkedInFetch} className="space-y-3">
+                  <input
+                    type="url"
+                    value={linkedinUrl}
+                    onChange={(e) => setLinkedinUrl(e.target.value)}
+                    className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    placeholder="https://www.linkedin.com/in/username/"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={fetching}
+                    className="px-4 py-2 rounded-md bg-white/10 text-white hover:bg-white/20 border border-white/10 disabled:opacity-60"
+                  >
+                    {fetching ? 'Fetching…' : 'Fetch details'}
+                  </button>
+                </form>
+                {scrapeResult && (
+                  <div className="max-h-64 overflow-auto rounded-md border border-white/10 bg-black/40 p-3 text-xs text-slate-200">
+                    <pre className="whitespace-pre-wrap break-words">{JSON.stringify(scrapeResult, null, 2)}</pre>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-sm text-slate-300 mb-1" htmlFor="password">Password</label>
-                <input id="password" type="password" required placeholder="••••••••" className="w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-              </div>
-              <button type="submit" className="w-full px-4 py-2 rounded-md bg-cyan-500 text-white hover:bg-cyan-400 transition-colors">Sign in</button>
-            </form>
+            </div>
           </div>
         </div>
       )}
